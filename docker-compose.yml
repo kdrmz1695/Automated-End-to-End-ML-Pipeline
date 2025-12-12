@@ -1,0 +1,47 @@
+
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: kuzey1234
+      POSTGRES_DB: finance_database
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    restart: always
+
+  airflow-webserver:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:kuzey1234@postgres/finance_database
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__WEBSERVER__RBAC: 'True'
+      PIP_ADDITIONAL_REQUIREMENTS: yfinance
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./dags/models:/opt/airflow/models
+    ports:
+      - "8080:8080"
+    restart: always
+    command: bash -c "airflow db init && airflow webserver"
+
+
+  airflow-scheduler:
+    build: .
+    depends_on:
+      - airflow-webserver
+    environment:
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:kuzey1234@postgres/finance_database
+      PIP_ADDITIONAL_REQUIREMENTS: yfinance
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./dags/models:/opt/airflow/models
+    restart: always
+    command: bash -c "airflow db init && airflow scheduler"
